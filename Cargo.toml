@@ -15,8 +15,10 @@ required-features = [ "rvps-server", "rvps-proxy", "tokio/rt-multi-thread" ]
 
 [features]
 default = [ "rvps-server", "in-toto", "all-verifier" ]
-all-verifier = [ "tdx-verifier" ]
+# all-verifier = [ "tdx-verifier", "sev-snp-vtpm-verifier" ]
+all-verifier = [ "sev-snp-vtpm-verifier" ]
 tdx-verifier = [ "cc-measurement", "scroll", "sgx-dcap-quoteverify-rs" ]
+sev-snp-vtpm-verifier = [ "openssl", "vtpm-snp" ]
 rvps-server = []
 rvps-proxy = [ "tonic" ]
 
@@ -38,9 +40,11 @@ hex = "0.4.3"
 # TODO: Replace this with crate.io published version
 in-toto = { git = "https://github.com/Xynnn007/in-toto-rs.git", rev = "7f69799", optional = true }
 # TODO: Replace this with kbs-types next published version (0.2.0)
-kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
+# kbs-types = { git = "https://github.com/virtee/kbs-types.git", rev = "13b9378f" }
+kbs-types = { git = "https://github.com/mkulke/kbs-types.git", rev = "c6f1096" }
 lazy_static = "1.4.0"
 log = "0.4.17"
+openssl = { version = "0.10", features = ["vendored"], optional = true}
 path-clean = "0.1.0"
 prost = "0.11.0"
 scroll = { version = "0.11.0", default-features = false, features = ["derive"], optional = true }
@@ -56,6 +60,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
 tonic = { version = "0.8.1", optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
+vtpm-snp = { git = "https://github.com/kinvolk/azure-cvm-tooling.git", rev = "da303e6", optional = true }
 
 [build-dependencies]
 shadow-rs = "0.19.0"
