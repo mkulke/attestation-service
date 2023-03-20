@@ -1,8 +1,10 @@
 use super::{Attestation, TeeEvidenceParsedClaim, Verifier};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Digest, Sha384};
+use std::collections::BTreeMap;
 use vtpm_snp::certs::{get_chain_from_amd, get_vcek_from_amd};
 use vtpm_snp::hcl::HclReportWithRuntimeData;
 use vtpm_snp::report::Validateable;
@@ -27,12 +29,27 @@ impl Verifier for SevSnpVtpm {
         let evidence = serde_json::from_str::<VtpmSnpEvidence>(&attestation.tee_evidence)
             .context("Failed to deserialize vTPM SEV-SNP evidence")?;
 
-        verify_vtpm_quote(&evidence.hcl_report, &evidence.quote, nonce.as_bytes())?;
+        let hashed_quote = hash_quote(&attestation, &nonce);
+        verify_quote(&evidence, &hashed_quote)?;
         verify_snp_report(&evidence.hcl_report)?;
 
         let claim = parse_tee_evidence(&evidence.hcl_report);
         Ok(claim)
     }
+}
+
+fn verify_quote(evidence: &VtpmSnpEvidence, hashed_nonce: &[u8]) -> Result<()> {
+    let quote = &evidence.quote;
+    let ak_pub = evidence.hcl_report.get_attestation_key()?;
+
+    let result = ak_pub
+        .verify_quote(quote, Some(hashed_nonce))
+        .context("Failed to verify vTPM quote")?;
+
+    if !result {
+        return Err(anyhow!("vTPM quote is invalid"));
+    }
+    Ok(())
 }
 
 fn parse_tee_evidence(hcl_report: &HclReportWithRuntimeData) -> TeeEvidenceParsedClaim {
@@ -81,12 +98,9 @@ fn verify_snp_report(report: &HclReportWithRuntimeData) -> Result<()> {
     Ok(())
 }
 
-fn verify_vtpm_quote(report: &HclReportWithRuntimeData, quote: &Quote, nonce: &[u8]) -> Result<()> {
-    let ak_pub = report.get_attestation_key()?;
-
-    ak_pub
-        .verify_quote(quote, Some(nonce))
-        .context("Failed to verify vTPM quote")?;
-
-    Ok(())
+fn hash_quote(attestation: &Attestation, nonce: &str) -> Vec<u8> {
+    let mut hasher = Sha384::new();
+    hasher.update(&nonce);
+    hasher.update(&attestation.tee_pubkey.k);
+    hasher.finalize().to_vec()
 }
