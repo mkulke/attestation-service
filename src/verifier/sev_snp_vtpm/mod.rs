@@ -32,10 +32,25 @@ impl Verifier for SevSnpVtpm {
         let hashed_quote = hash_quote(&attestation, &nonce);
         verify_quote(&evidence, &hashed_quote)?;
         verify_snp_report(&evidence.hcl_report)?;
+        verify_report_data(&evidence)?;
 
         let claim = parse_tee_evidence(&evidence.hcl_report);
         Ok(claim)
     }
+}
+
+fn verify_report_data(evidence: &VtpmSnpEvidence) -> Result<()> {
+    let runtime_data_hash = evidence.hcl_report.runtime_data_hash;
+    // Only the first 32 bytes of the report data are used for the sha256
+    let report_data = &evidence.hcl_report.snp_report().report_data[..32];
+
+    if runtime_data_hash != report_data {
+        return Err(anyhow!(
+            "SNP report data field is not matching runtime data"
+        ));
+    }
+
+    Ok(())
 }
 
 fn verify_quote(evidence: &VtpmSnpEvidence, hashed_nonce: &[u8]) -> Result<()> {
