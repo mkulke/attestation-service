@@ -60,7 +60,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
 tonic = { version = "0.8.1", optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
-vtpm-snp = { git = "https://github.com/kinvolk/azure-cvm-tooling.git", rev = "da303e6", optional = true }
+vtpm-snp = { git = "https://github.com/kinvolk/azure-cvm-tooling.git", rev = "08c6ab4", optional = true }
 
 [build-dependencies]
 shadow-rs = "0.19.0"
