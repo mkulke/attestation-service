@@ -1,19 +1,20 @@
 use super::{Attestation, TeeEvidenceParsedClaim, Verifier};
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
+use openssl::sha::sha256;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha384};
 use std::collections::BTreeMap;
 use vtpm_snp::certs::{get_chain_from_amd, get_vcek_from_amd};
-use vtpm_snp::hcl::HclReportWithRuntimeData;
+use vtpm_snp::hcl::{buf_to_hcl_data, HclReportWithRuntimeData};
 use vtpm_snp::report::Validateable;
 use vtpm_snp::vtpm::{Quote, VerifyVTpmQuote};
 
 #[derive(Serialize, Deserialize)]
 struct VtpmSnpEvidence {
     quote: Quote,
-    hcl_report: HclReportWithRuntimeData,
+    report: Vec<u8>,
 }
 
 #[derive(Default)]
@@ -29,22 +30,26 @@ impl Verifier for SevSnpVtpm {
         let evidence = serde_json::from_str::<VtpmSnpEvidence>(&attestation.tee_evidence)
             .context("Failed to deserialize vTPM SEV-SNP evidence")?;
 
+        let hcl_report: HclReportWithRuntimeData = evidence.report[..].try_into()?;
         let hashed_quote = hash_quote(&attestation, &nonce);
-        verify_quote(&evidence, &hashed_quote)?;
-        verify_snp_report(&evidence.hcl_report)?;
-        verify_report_data(&evidence)?;
 
-        let claim = parse_tee_evidence(&evidence.hcl_report);
+        verify_quote(&evidence.quote, &hcl_report, &hashed_quote)?;
+        verify_snp_report(&hcl_report)?;
+        verify_report_data(&hcl_report, &evidence.report)?;
+
+        let claim = parse_tee_evidence(&hcl_report);
         Ok(claim)
     }
 }
 
-fn verify_report_data(evidence: &VtpmSnpEvidence) -> Result<()> {
-    let runtime_data_hash = evidence.hcl_report.runtime_data_hash;
-    // Only the first 32 bytes of the report data are used for the sha256
-    let report_data = &evidence.hcl_report.snp_report().report_data[..32];
+fn verify_report_data(report: &HclReportWithRuntimeData, bytes: &[u8]) -> Result<()> {
+    let (_, var_data) = buf_to_hcl_data(&bytes)?;
+    let var_data_hash = sha256(var_data);
 
-    if runtime_data_hash != report_data {
+    // Only the first 32 bytes of SNP report data are used for the sha256
+    let report_data = &report.snp_report().report_data[..32];
+
+    if var_data_hash != report_data {
         return Err(anyhow!(
             "SNP report data field is not matching runtime data"
         ));
@@ -53,9 +58,12 @@ fn verify_report_data(evidence: &VtpmSnpEvidence) -> Result<()> {
     Ok(())
 }
 
-fn verify_quote(evidence: &VtpmSnpEvidence, hashed_nonce: &[u8]) -> Result<()> {
-    let quote = &evidence.quote;
-    let ak_pub = evidence.hcl_report.get_attestation_key()?;
+fn verify_quote(
+    quote: &Quote,
+    report: &HclReportWithRuntimeData,
+    hashed_nonce: &[u8],
+) -> Result<()> {
+    let ak_pub = report.get_attestation_key()?;
 
     let result = ak_pub
         .verify_quote(quote, Some(hashed_nonce))
