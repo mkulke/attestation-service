@@ -14,15 +14,15 @@ path = "bin/rvps/src/main.rs"
 required-features = [ "rvps-server", "rvps-proxy", "tokio/rt-multi-thread" ]
 
 [features]
-default = [ "rvps-server", "in-toto", "all-verifier" ]
+default = ["rvps-server", "in-toto", "all-verifier"]
 # all-verifier = [ "tdx-verifier", "sev-snp-vtpm-verifier" ]
-all-verifier = [ "sev-snp-vtpm-verifier" ]
-tdx-verifier = [ "cc-measurement", "scroll", "sgx-dcap-quoteverify-rs" ]
-sev-snp-vtpm-verifier = [ "openssl", "vtpm-snp" ]
+all-verifier = ["sev-snp-vtpm-verifier"]
+tdx-verifier = ["cc-measurement", "scroll", "sgx-dcap-quoteverify-rs"]
+sev-snp-vtpm-verifier = ["openssl", "vtpm-snp"]
 rvps-server = []
-rvps-proxy = [ "tonic" ]
+rvps-proxy = ["tonic"]
 
-in-toto = [ "dep:in-toto" ]
+in-toto = ["dep:in-toto"]
 
 [dependencies]
 anyhow = "1.0"
@@ -60,7 +60,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
 tonic = { version = "0.8.1", optional = true }
 uuid = { version = "1.1.2", features = ["v4"] }
-vtpm-snp = { git = "https://github.com/kinvolk/azure-cvm-tooling.git", rev = "a02e14e", optional = true }
+vtpm-snp = { git = "https://github.com/kinvolk/azure-cvm-tooling.git", rev = "7203e90", optional = true }
 # vtpm-snp = { path = "../azure-cvm-tooling/vtpm-snp", optional = true }
 
 [build-dependencies]
