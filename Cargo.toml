@@ -15,7 +15,7 @@ required-features = [ "rvps-native", "rvps-grpc", "tokio/rt-multi-thread" ]
 
 [features]
 default = [ "rvps-native", "in-toto", "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sev-snp-vtpm-verifier" ]
+all-verifier = [ "sev-snp-vtpm-verifier" ]
 tdx-verifier = [ "cc-measurement", "scroll", "intel-tee-quote-verification-rs" ]
 sev-snp-vtpm-verifier = ["openssl", "vtpm-snp"]
 
