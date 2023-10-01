@@ -112,14 +112,17 @@ impl AttestationService {
     /// Evaluate Attestation Evidence.
     /// Issue an attestation results token which contain TCB status and TEE public key.
     pub async fn evaluate(&self, tee: Tee, nonce: &str, attestation: &str) -> Result<String> {
-        let attestation = serde_json::from_str::<Attestation>(attestation)
+        let parsed_attestation = serde_json::from_str::<Attestation>(attestation)
             .context("Failed to deserialize Attestation")?;
         let verifier = crate::verifier::to_verifier(&tee)?;
 
         let claims_from_tee_evidence = verifier
-            .evaluate(nonce.to_string(), &attestation)
+            .evaluate(nonce.to_string(), &parsed_attestation)
             .await
-            .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
+            .map_err(|e| {
+                std::fs::write("/tmp/failed_attestation", attestation).unwrap();
+                anyhow!("Verifier evaluate failed: {e:?}")
+            })?;
 
         let flattened_claims = flatten_claims(tee.clone(), &claims_from_tee_evidence)?;
         let tcb = serde_json::to_string(&flattened_claims)?;
@@ -136,7 +139,7 @@ impl AttestationService {
             .map_err(|e| anyhow!("Policy Engine evaluation failed: {e}"))?;
 
         let token_claims = json!({
-            "tee-pubkey": attestation.tee_pubkey.clone(),
+            "tee-pubkey": parsed_attestation.tee_pubkey.clone(),
             "tcb-status": flattened_claims,
             "evaluation-report": evaluation_report,
         });
