@@ -7,7 +7,7 @@ use super::{Attestation, TeeEvidenceParsedClaim, Verifier};
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use az_snp_vtpm::certs::{AmdChain, Vcek, X509};
-use az_snp_vtpm::hcl::{HclData, RuntimeData};
+use az_snp_vtpm::hcl::HclData;
 use az_snp_vtpm::report::Validateable;
 use az_snp_vtpm::vtpm::{Quote, VerifyVTpmQuote};
 use base64::Engine;
@@ -30,9 +30,8 @@ struct Evidence {
 #[derive(Default)]
 pub struct AzSnpVtpm;
 
-#[async_trait]
-impl Verifier for AzSnpVtpm {
-    async fn evaluate(
+impl AzSnpVtpm {
+    fn evaluate_sync(
         &self,
         nonce: String,
         attestation: &Attestation,
@@ -41,12 +40,18 @@ impl Verifier for AzSnpVtpm {
             .context("Failed to deserialize vTPM SEV-SNP evidence")?;
 
         let hcl_data: HclData = evidence.report[..].try_into()?;
+
+        println!("hcl_data parsing worked");
+
         let snp_report = hcl_data.report().snp_report();
         let vcek = Vcek::from_pem(&evidence.vcek)?;
+
+        println!("vcek parsing worked");
 
         let hashed_quote = nonced_pub_key_hash(attestation, &nonce);
 
         verify_quote(&evidence.quote, &hcl_data, &hashed_quote)?;
+
         verify_snp_report(snp_report, &vcek)?;
         let var_data = hcl_data.var_data();
         hcl_data.report().verify_report_data(var_data)?;
@@ -56,9 +61,19 @@ impl Verifier for AzSnpVtpm {
     }
 }
 
+#[async_trait]
+impl Verifier for AzSnpVtpm {
+    async fn evaluate(
+        &self,
+        nonce: String,
+        attestation: &Attestation,
+    ) -> Result<TeeEvidenceParsedClaim> {
+        self.evaluate_sync(nonce, attestation)
+    }
+}
+
 fn verify_quote(quote: &Quote, hcl_data: &HclData, hashed_nonce: &[u8]) -> Result<()> {
-    let runtime_data: RuntimeData = hcl_data.var_data().try_into()?;
-    let ak_pub = runtime_data.get_attestation_key()?;
+    let ak_pub = hcl_data.var_data().ak_pub()?;
 
     ak_pub
         .verify_quote(quote, hashed_nonce)
@@ -187,6 +202,30 @@ mod tests {
         wrong_report[0x0540] = 0;
         let wrong_hcl_data: HclData = wrong_report.as_slice().try_into().unwrap();
         verify_quote(&quote, &wrong_hcl_data, nonce).unwrap_err();
+    }
+
+    #[test]
+    fn test_mgns() {
+        let verifier = AzSnpVtpm;
+        let attestation = include_bytes!("../../../../test_data/failed_attestation");
+        let attestation = std::str::from_utf8(attestation).unwrap();
+        let parsed_attestation = serde_json::from_str::<Attestation>(attestation)
+            .expect("Failed to deserialize Attestation");
+        verifier
+            .evaluate_sync("ohno".into(), &parsed_attestation)
+            .unwrap();
+        // verifier.verify(evidence).unwrap_err();
+        // convert bytes to string
+        // let evidence = std::str::from_utf8(evidence).unwrap();
+
+        // let evidence = serde_json::from_str::<Evidence>(evidence).unwrap();
+        // let hcl_data: HclData = evidence.report[..].try_into().expect("HCL parsing failed");
+        // let snp_report = hcl_data.report().snp_report();
+        // let vcek = Vcek::from_pem(&evidence.vcek).expect("VCEK parsing failed");
+        // let hashed_quote = nonced_pub_key_hash(attestation, &nonce);
+
+        // verify_quote(&evidence.quote, &hcl_data, &hashed_quote)?;
+        // verify_snp_report(snp_report, &vcek)?;
     }
 
     #[test]
