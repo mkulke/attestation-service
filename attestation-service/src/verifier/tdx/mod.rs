@@ -13,7 +13,7 @@ use sha2::{Digest, Sha384};
 
 mod claims;
 mod eventlog;
-mod quote;
+pub mod quote;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TdxEvidence {

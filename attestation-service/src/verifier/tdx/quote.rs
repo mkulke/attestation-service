@@ -268,4 +268,11 @@ mod tests {
         let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
         assert!(res.is_ok(), "error");
     }
+
+    #[tokio::test]
+    async fn mgns() {
+        let quote_bin = fs::read("../test_data/td_quote.bin").unwrap();
+        let res = ecdsa_quote_verification(quote_bin.as_slice()).await;
+        assert!(res.is_ok(), "error");
+    }
 }

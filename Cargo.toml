@@ -5,6 +5,7 @@ members = [
     "bin/rvps",
     "bin/grpc-as",
     "bin/rvps-client",
+	"bin/verify-td-quote",
 ]
 
 resolver = "2"
