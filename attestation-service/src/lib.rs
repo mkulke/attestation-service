@@ -122,6 +122,7 @@ impl AttestationService {
             .map_err(|e| anyhow!("Verifier evaluate failed: {e:?}"))?;
 
         let flattened_claims = flatten_claims(tee.clone(), &claims_from_tee_evidence)?;
+        info!("flattened_claims: {:?}", flattened_claims);
         let tcb = serde_json::to_string(&flattened_claims)?;
         let reference_data_map = self
             .get_reference_data(&tcb)
