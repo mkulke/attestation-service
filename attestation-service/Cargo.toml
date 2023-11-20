@@ -5,7 +5,8 @@ edition = "2021"
 
 [features]
 default = [ "rvps-native", "all-verifier" ]
-all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "csv-verifier", "cca-verifier" ]
+# all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "csv-verifier", "cca-verifier" ]
+all-verifier = [ "tdx-verifier", "sgx-verifier", "snp-verifier", "az-snp-vtpm-verifier", "cca-verifier" ]
 tdx-verifier = [ "eventlog-rs", "scroll", "sgx-dcap-quoteverify-rs" ]
 sgx-verifier = [ "scroll", "sgx-dcap-quoteverify-rs" ]
 az-snp-vtpm-verifier = [ "az-snp-vtpm", "sev" ]
